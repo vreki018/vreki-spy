@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ใครคือสายลับ?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,600;0,800;1,800;1,900&family=Mali:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ใครคือสายลับ? — table viewer, as in the clip. Ink-comic look: black page, paper, ink, one red. Driven only by the timeline.
+     The 1920×1080 stage is scaled to fit the window (fit() below). */
+  :root { --page:#0A0A0A; --paper:#F3F0E9; --ink:#111111; --red:#D7262E; --grey:#A9A59D; --dim:#2A2826; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; background:var(--page); overflow:hidden; font-family:'Mali','Sarabun',sans-serif; color:#fff; }
+  #stage { position:relative; width:1920px; height:1080px; overflow:hidden; background:var(--page); }
+  /* screentone dots on the page, drawn once */
+  #tone { position:absolute; inset:0; background-image:radial-gradient(#ffffff10 1.6px, transparent 1.7px); background-size:14px 14px; }
+  #table { position:absolute; left:400px; top:250px; width:1120px; height:600px; border-radius:50%; background:var(--paper); border:8px solid var(--ink);
+    outline:6px solid var(--paper); box-shadow:0 0 0 14px var(--ink); }
+  #table::after { content:''; position:absolute; inset:26px; border-radius:50%; border:3px dashed #11111130; }
+  svg.lines { position:absolute; inset:0; width:1920px; height:1080px; pointer-events:none; z-index:1; }
+  svg.lines path { fill:none; stroke:var(--ink); stroke-width:7; stroke-linecap:round; }
+  svg.lines path.hal { stroke:var(--paper); stroke-width:15; }
+
+  /* centre card: what the viewer knows */
+  #card { position:absolute; left:760px; top:400px; width:400px; height:176px; background:#fff; color:var(--ink); border:5px solid var(--ink);
+    box-shadow:8px 8px 0 var(--ink); text-align:center; padding-top:16px; z-index:2; transform:rotate(-1.5deg); }
+  #card .k { font:800 21px/1 'Kanit'; letter-spacing:.06em; color:#555; }
+  #card .v { font:900 italic 54px/1.25 'Kanit'; margin-top:8px; white-space:nowrap; }
+  #card .h { font:600 18px/1.2 'Mali'; color:#666; margin-top:4px; }
+  #fuse { position:absolute; left:780px; top:612px; width:360px; height:22px; border:4px solid var(--ink); background:#fff; z-index:2; }
+  #fuse .f { position:absolute; left:0; top:0; bottom:0; width:100%; background:var(--ink); transform-origin:left center; transition:transform .8s cubic-bezier(.4,0,.2,1); }
+  /* VreKi 2026-11-02: the speech bubble sat on the place card all game → with ≤8 seats the gap between the two top
+     seats is free: the card hangs there above the table like a sign, the fuse runs along the bottom, the table centre is
+     left to the bubbles */
+  #stage.few #card { top:34px; }
+  #stage.few #fuse { top:1044px; }
+  /* trial banner + tally sit low between the two bottom seats, away from the bubbles in the table centre */
+  #stage.few #banner { top:872px; }
+  #stage.few #tally { top:972px; }
+  #fuse .tip { position:absolute; left:calc(100% - 14px); top:-14px; width:28px; height:40px; transition:left .8s cubic-bezier(.4,0,.2,1); }
+
+  /* seats */
+  .seat { position:absolute; width:160px; height:160px; margin:-80px 0 0 -80px; z-index:4; transition:transform .35s cubic-bezier(.34,1.56,.64,1), filter .3s; }
+  .seat .disc { position:absolute; inset:0; border-radius:50%; background:var(--paper); border:7px solid var(--c); outline:5px solid var(--ink); overflow:hidden; }
+  .seat .disc svg { width:100%; height:100%; display:block; }
+  .avatar .o { stroke:var(--ink); stroke-width:4.2; stroke-linejoin:round; }
+  .seat .nm { position:absolute; top:150px; left:50%; transform:translateX(-50%); background:#fff; color:var(--ink); border:4px solid var(--ink);
+    font:800 25px/1 'Kanit'; padding:6px 14px 8px; white-space:nowrap; z-index:2; }
+  .seat .brand { position:absolute; right:-14px; top:-10px; width:52px; height:52px; border-radius:50%; background:#fff; border:4px solid var(--ink);
+    display:flex; align-items:center; justify-content:center; z-index:3; }
+  .seat .brand img { width:66%; height:66%; object-fit:contain; display:block; }
+  .seat .spy { position:absolute; left:-22px; top:-14px; background:var(--red); color:#fff; font:900 italic 21px/1 'Kanit'; padding:6px 10px 8px;
+    border:4px solid var(--ink); transform:rotate(-8deg); z-index:3; display:none; }
+  #stage.showspy .seat.isspy .spy { display:block; }
+  #stage:not(.showspy) #spyp { display:none !important; }
+  /* ?place=0: the red "right place" row would give the hidden place away until the card turns over */
+  #stage.hideplace #spyp .row.right { color:inherit; }
+  #stage.hideplace #spyp .row.right .bar i { background:var(--ink); }
+  .seat.cleared .nm::after { content:' ✓'; }
+  .seat.talk { transform:scale(1.12); }
+  .seat.talk .disc { outline-width:8px; }
+  .seat.target .disc { outline:8px dashed var(--ink); outline-offset:3px; }
+  .seat.out { filter:grayscale(1) brightness(.55); }
+  .seat .sus { position:absolute; left:-24px; bottom:4px; width:58px; height:58px; border-radius:50%; background:#fff; border:4px solid var(--ink); overflow:hidden; z-index:3; display:none; }
+  .seat .sus svg { width:100%; height:100%; display:block; }
+  .seat .sus::before { content:''; position:absolute; }
+  #stage.showsus .seat .sus.on { display:block; }
+  .seat .chip { position:absolute; left:50%; top:-58px; transform:translateX(-50%); background:#fff; color:var(--ink); border:4px solid var(--ink); font:800 22px/1 'Kanit';
+    padding:6px 12px 8px; white-space:nowrap; display:none; z-index:5; align-items:center; gap:8px; }
+  .seat .chip.on { display:flex; }
+  .seat .chip.red { background:var(--red); color:#fff; }
+  .seat .chip .mini { width:34px; height:34px; border-radius:50%; overflow:hidden; border:3px solid var(--ink); background:var(--paper); }
+  .seat .chip .mini svg { width:100%; height:100%; display:block; }
+
+  /* speech bubble (one at a time) */
+  #bub { position:absolute; width:max-content; max-width:560px; background:#fff; color:var(--ink); border:5px solid var(--ink); border-radius:26px;
+    padding:16px 24px 18px; font:600 31px/1.38 'Mali'; z-index:6; display:none; box-shadow:7px 7px 0 var(--ink); }
+  #bub .who { font:800 22px/1 'Kanit'; color:#555; margin-bottom:6px; display:flex; align-items:center; gap:10px; }
+  #bub .who .to { color:var(--ink); }
+  #bub.q .who::before { content:'ถาม'; background:var(--ink); color:#fff; padding:4px 10px 6px; }
+  #bub.a .who::before { content:'ตอบ'; background:#fff; color:var(--ink); border:3px solid var(--ink); padding:2px 9px 4px; }
+  #bub.acc, #bub.gs { background:var(--red); color:#fff; }
+  #bub.acc .who, #bub.gs .who, #bub.acc .who .to { color:#fff; }
+  #bub.acc .who::before { content:'กล่าวหา'; background:#fff; color:var(--red); padding:4px 10px 6px; }
+  #bub.gs .who::before { content:'เดา'; background:#fff; color:var(--red); padding:4px 10px 6px; }
+  #bub.def .who::before { content:'แก้ตัว'; background:#fff; color:var(--ink); border:3px solid var(--ink); padding:2px 9px 4px; }
+
+  /* corner panels */
+  .panel { position:absolute; background:#fff; color:var(--ink); border:5px solid var(--ink); box-shadow:7px 7px 0 var(--ink); z-index:6; }
+  #think { left:28px; top:26px; width:330px; min-height:120px; padding:12px 16px 14px; display:none; transform:rotate(-1deg); }
+  #stage.showthink #think.on { display:block; }
+  #think .k { font:800 19px/1 'Kanit'; display:flex; align-items:center; gap:8px; }
+  #think .k .mini { width:38px; height:38px; border-radius:50%; overflow:hidden; border:3px solid var(--ink); background:var(--paper); }
+  #think .k .mini svg { width:100%; height:100%; display:block; }
+  #think .t { font:600 21px/1.35 'Mali'; margin-top:8px; }
+  #think .t::before { content:'(คิดในใจ) '; color:#777; }
+  #spyp { right:28px; top:26px; width:330px; padding:12px 16px 16px; display:none; transform:rotate(1deg); }
+  #spyp.on { display:block; }
+  #spyp .k { font:900 italic 22px/1 'Kanit'; color:var(--red); }
+  #spyp .row { margin-top:10px; font:700 20px/1 'Mali'; }
+  #spyp .bar { margin-top:5px; height:16px; border:3px solid var(--ink); background:#fff; position:relative; }
+  #spyp .bar i { position:absolute; left:0; top:0; bottom:0; background:var(--ink); transition:width .6s cubic-bezier(.4,0,.2,1); }
+  #spyp .row.right { color:var(--red); }
+  #spyp .row.right .bar i { background:var(--red); }
+
+  /* big centre overlays: phase banner, verdict cards */
+  #dim { position:absolute; inset:0; background:#000; opacity:0; transition:opacity .4s; z-index:5; pointer-events:none; }
+  #dim.on { opacity:.62; }
+  #banner { position:absolute; left:50%; top:648px; transform:translateX(-50%) rotate(-2deg); background:var(--paper); color:var(--ink); border:6px solid var(--ink);
+    box-shadow:9px 9px 0 var(--ink); font:900 italic 46px/1 'Kanit'; padding:14px 34px 18px; z-index:8; display:none; white-space:nowrap; }
+  #banner.red { background:var(--red); color:#fff; }
+  #tally { position:absolute; left:50%; top:752px; transform:translateX(-50%); background:#fff; color:var(--ink); border:5px solid var(--ink); font:800 30px/1 'Kanit';
+    padding:10px 22px 14px; z-index:8; display:none; white-space:nowrap; }
+  #big { position:absolute; left:50%; top:50%; width:560px; height:400px; margin:-200px 0 0 -280px; z-index:9; perspective:1600px; display:none; }
+  #big .in { position:absolute; inset:0; transform-style:preserve-3d; transition:transform .9s cubic-bezier(.65,0,.35,1); }
+  #big.flip .in { transform:rotateY(180deg); }
+  #big .fc, #big .bk { position:absolute; inset:0; backface-visibility:hidden; border:8px solid var(--ink); box-shadow:12px 12px 0 var(--ink); display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center; color:var(--ink); }
+  #big .fc { background:var(--paper); }
+  #big .fc .q { font:900 italic 150px/1 'Kanit'; }
+  #big .bk { background:#fff; transform:rotateY(180deg); }
+  #big .bk.red { background:var(--red); color:#fff; }
+  #big .bk .face { width:170px; height:170px; border-radius:50%; overflow:hidden; border:6px solid var(--ink); background:var(--paper); margin-bottom:12px; }
+  #big .bk .face svg { width:100%; height:100%; display:block; }
+  #big .bk .l1 { font:900 italic 64px/1.1 'Kanit'; }
+  #big .bk .l2 { font:700 28px/1.25 'Mali'; margin-top:8px; padding:0 24px; }
+
+  /* end card */
+  #end { position:absolute; inset:0; z-index:10; display:none; align-items:center; justify-content:center; background:#0A0A0AE8; }
+  #end.on { display:flex; }
+  #end .box { width:1280px; background:var(--paper); color:var(--ink); border:8px solid var(--ink); box-shadow:14px 14px 0 var(--red); padding:30px 44px 36px; }
+  #end .w { font:900 italic 70px/1.1 'Kanit'; }
+  #end .w.red { color:var(--red); }
+  #end .how { font:700 30px/1.3 'Mali'; margin-top:6px; }
+  #end .camps { display:flex; gap:26px; margin-top:26px; }
+  #end .camp { flex:1; border:5px solid var(--ink); background:#fff; padding:14px 18px; display:flex; align-items:center; gap:16px; }
+  #end .camp img { width:58px; height:58px; }
+  #end .camp .n { font:900 italic 56px/1 'Kanit'; margin-left:auto; }
+  #end .camp .l { font:800 26px/1.1 'Kanit'; }
+  #end .camp .s { font:600 18px/1.2 'Mali'; color:#666; }
+  #end .ppl { display:flex; flex-wrap:wrap; gap:12px; margin-top:22px; }
+  #end .p { display:flex; align-items:center; gap:8px; border:4px solid var(--ink); background:#fff; padding:4px 12px 4px 4px; font:800 21px/1 'Kanit'; }
+  #end .p.spy { background:var(--red); color:#fff; }
+  #end .p .mini { width:44px; height:44px; border-radius:50%; overflow:hidden; border:3px solid var(--ink); background:var(--paper); }
+  #end .p .mini svg { width:100%; height:100%; display:block; }
+
+  #keys { position:absolute; left:50%; bottom:10px; transform:translateX(-50%); font:600 15px/1 'Mali'; color:#777; z-index:11; }
+  #snd { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); background:#fff; color:var(--ink); border:5px solid var(--ink); font:800 30px/1 'Kanit';
+    padding:18px 30px 22px; z-index:12; cursor:pointer; }
+  #stage { position:absolute; left:0; top:0; transform-origin:0 0; }
+
+  /* live game: waiting for the AIs / a voice, the stop button, home */
+  .hud { position:absolute; right:28px; bottom:40px; background:var(--paper); color:var(--ink); border:4px solid var(--ink); font:800 24px/1 'Kanit';
+    padding:10px 18px 13px; z-index:11; display:none; }
+  .hud.on { display:block; }
+  .corner { position:absolute; top:auto; bottom:40px; background:#fff; color:var(--ink); border:4px solid var(--ink); font:800 22px/1 'Kanit';
+    padding:9px 16px 12px; z-index:11; cursor:pointer; text-decoration:none; }
+  .corner:hover { background:var(--red); color:#fff; }
+  #home { left:28px; }
+  #stopBtn { left:190px; display:none; }
+  #end .act { display:flex; justify-content:center; margin-top:26px; }
+  #end .act a { background:var(--ink); color:#fff; border:4px solid var(--ink); font:800 30px/1 'Kanit'; padding:12px 28px 15px; text-decoration:none; }
+  #end .act a:hover { background:var(--red); }
+
+  /* game halted (quota, error, stop button) or the file could not be read · the stop question: centred card on a dimmed stage */
+  #halt, #askStop { position:absolute; inset:0; z-index:13; display:none; align-items:center; justify-content:center; background:rgba(10,10,10,.78); }
+  #halt .card, #askStop .card { width:980px; background:var(--paper); color:var(--ink); border:6px solid var(--ink); outline:5px solid var(--paper); padding:40px 50px 44px; text-align:center; }
+  #halt h2, #askStop h2 { margin:0 0 18px; font:900 italic 64px/1.1 'Kanit'; color:var(--red); }
+  #halt p { margin:0 0 30px; font:700 28px/1.45 'Mali'; white-space:pre-line; }
+  #halt p:empty { display:none; }
+  #halt a, #askStop button { display:inline-block; background:var(--ink); color:#fff; border:4px solid var(--ink); font:800 30px/1 'Kanit'; padding:12px 28px 15px;
+    text-decoration:none; cursor:pointer; margin:0 8px; }
+  #halt a:hover, #askStop button:hover { background:var(--red); }
+  #askStop button.quiet { background:#fff; color:var(--ink); }
+</style>
+</head>
+<body>
+<div id="stage" class="showsus">
+  <div id="tone"></div>
+  <div id="table"></div>
+  <div id="card"><div class="k">สถานที่ (คนดูเห็นคนเดียว)</div><div class="v" id="placeName">…</div><div class="h">สายลับไม่รู้ว่าที่นี่คือที่ไหน</div></div>
+  <div id="fuse"><div class="f"></div>
+    <svg class="tip" viewBox="0 0 28 40"><path d="M14 2 Q24 16 18 26 Q14 34 10 26 Q4 16 14 2 Z" fill="#D7262E" stroke="#111" stroke-width="3"/></svg></div>
+  <svg class="lines" id="lines"></svg>
+  <div id="seats"></div>
+  <div id="bub"><div class="who"></div><div class="t"></div></div>
+  <div id="think" class="panel"><div class="k"></div><div class="t"></div></div>
+  <div id="spyp" class="panel"><div class="k">สายลับเดาว่าที่นี่คือ…</div><div class="rows"></div></div>
+  <div id="dim"></div>
+  <div id="banner"></div>
+  <div id="tally"></div>
+  <div id="big"><div class="in"><div class="fc"><div class="q">?</div></div><div class="bk"><div class="face"></div><div class="l1"></div><div class="l2"></div></div></div></div>
+  <div id="end"><div class="box"></div></div>
+  <div id="keys">Space หยุด/เล่น · S ดูแบบรู้ว่าใครเป็นสายลับ · T คิดในใจ · U สงสัยใคร</div>
+  <a id="home" class="corner" href="/">หน้าแรก</a>
+  <button id="stopBtn" class="corner" type="button">หยุดเกม</button>
+  <div id="wait" class="hud">รอ AI คิดอยู่…</div>
+  <div id="snd">คลิกเพื่อเปิดเสียง</div>
+  <div id="askStop" role="alertdialog" aria-labelledby="askStopT"><div class="card"><h2 id="askStopT">หยุดเกมนี้เลยไหม?</h2>
+    <button type="button" data-stop="yes">หยุดเกม</button><button type="button" class="quiet" data-stop="no">ดูต่อ</button></div></div>
+  <div id="halt"><div class="card"><h2 id="haltT">เกมหยุดแล้ว</h2><p id="haltM"></p><a href="/">กลับหน้าแรก</a></div></div>
+</div>
+<script src="avatars.js"></script>
+<script src="sfx.js"></script>
+<script>
+'use strict';
+const qs = new URLSearchParams(location.search);
+// only the game's own files: /games/<id>.json (server.js serves nothing else under /games/)
+const T_OK = /^\/games\/(w_[0-9_]+|clip_g[1-5])\.json$/;
+const tlUrl = T_OK.test(qs.get('t') || '') ? qs.get('t') : null;
+const LIVE = qs.get('live') === '1';
+const HIDE_PLACE = qs.get('place') === '0';
+const LOGO = { claude: 'logos/claude.svg', codex: 'logos/openai_2025.svg', gemini: 'logos/gemini.svg', mock: 'logos/claude.svg' };
+const CAMP = { claude: 'Claude', codex: 'ChatGPT', gemini: 'Gemini', mock: 'บอททดสอบ' };
+const COLOR = { jaem: '#C2566B', perm: '#8A9A5B', fah: '#4FA3D1', wit: '#7C6BC4', muay: '#D08B3E', tee: '#3FA88B', khem: '#5B6E8C', win: '#C7A23A', boon: '#A0705A', noon: '#B24F7E' };
+const PLACE = { hospital: 'โรงพยาบาล', school: 'โรงเรียน', nightmarket: 'ตลาดนัดกลางคืน', mookata: 'ร้านหมูกระทะ', airport: 'สนามบิน', sleeper: 'รถไฟตู้นอน', beach: 'ชายหาด',
+  wedding: 'งานแต่งงาน', concert: 'คอนเสิร์ต', cinema: 'โรงหนัง', gym: 'ฟิตเนส', police: 'สถานีตำรวจ', bank: 'ธนาคาร', zoo: 'สวนสัตว์', salon: 'ร้านทำผม',
+  filmset: 'กองถ่ายละคร', mall: 'ห้างสรรพสินค้า', ferry: 'เรือข้ามฟาก', templefair: 'งานวัด', spacestation: 'สถานีอวกาศ' };
+const HOW = { guessed: 'สายลับเปิดตัวแล้วเดาสถานที่ถูก', spyWrong: 'สายลับเปิดตัวแล้วเดาสถานที่ผิด', wrongAccuse: 'ทุกคนจับผิดคน สายลับรอดไปเลย', wrongVote: 'โหวตรอบสุดท้ายโดนคนบริสุทธิ์',
+  lastGuess: 'โดนจับได้ แต่เดาสถานที่ถูกในวินาทีสุดท้าย', caught: 'จับสายลับได้ และสายลับเดาสถานที่ผิด', trial: 'ทุกคนช่วยกันชี้ จับสายลับได้กลางเกม', tie: 'โหวตรอบสุดท้ายคะแนนเท่ากัน ไม่มีใครโดน' };
+const SPOKEN = ['ask', 'answer', 'accuse', 'defend', 'vote', 'final', 'guess'];
+
+let TL = null, VOICE = null, S = { phase: 'load', i: 0, paused: false };
+const AUD = SFX.player();
+const $ = (s) => document.querySelector(s);
+// every name or AI text that goes into innerHTML passes through esc (a game file is data, not page code)
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const stage = $('#stage');
+const P = {}; // id -> { name, seat (camp), el, x, y }
+let deal = null, QUESTIONS = 18;
+
+// ---------- time (setTimeout is virtual under tools/render.js) ----------
+const wait = (ms) => new Promise((res) => {
+  const step = () => (S.paused ? setTimeout(step, 100) : res());
+  setTimeout(step, ms);
+});
+const speakMs = (text) => Math.max(2200, String(text || '').length * 75 + 900);
+
+// ---------- voices: runner.js → <timeline>_voice/manifest.json { lines:[{ e, file, dur }] } (file null = that line failed) ----------
+// live: the runner voices a line after it lands in the timeline → before a voiced line plays, re-read the manifest every
+// VOICE_POLL until the line has an entry, at most VOICE_WAIT, then go on without its voice
+const VOICED = ['ask', 'answer', 'accuse', 'defend', 'guess'];
+const VOICE_POLL = 1500, VOICE_WAIT = 25000;
+const VOICE_ON = qs.get('voice') !== '0';
+let VOICE_BASE = '';
+let audioEl = null;
+window.playVoice = (m, e) => {
+  const v = VOICE && VOICE[m] && VOICE[m][e];
+  if (!v || !v.file || !AUD_ON) return;
+  try { if (audioEl) audioEl.pause(); audioEl = new Audio(VOICE_BASE + v.file); audioEl.play().catch(() => {}); } catch (_) {}
+};
+window.stopVoice = () => { if (audioEl) audioEl.pause(); };
+async function loadVoice() {
+  if (!VOICE) VOICE = { 0: {} };
+  if (!VOICE_ON) return;
+  const mf = tlUrl.replace(/\.json$/, '_voice/manifest.json');
+  VOICE_BASE = mf.replace('manifest.json', '');
+  try { const r = await fetch(mf, { cache: 'no-store' }); if (r.ok) for (const L of (await r.json()).lines) VOICE[0][L.e] = L; } catch (_) {}
+}
+async function voiceReady(e, idx) {
+  if (!LIVE || !VOICE_ON || !VOICED.includes(e.type) || !e.text || (VOICE && VOICE[0][idx])) return;
+  const t0 = performance.now();
+  while (!(VOICE && VOICE[0][idx]) && performance.now() - t0 < VOICE_WAIT) {
+    if (performance.now() - t0 > 1200) hud('กำลังทำเสียง…');
+    await new Promise((res) => setTimeout(res, VOICE_POLL));
+    await loadVoice();
+  }
+  hud(null);
+}
+// how long a spoken line stays: its voice (if any) + a breath, else reading time
+const holdMs = (e, idx) => { const v = VOICE && VOICE[0][idx]; return v && v.dur ? Math.round(v.dur * 1000) + 450 : speakMs(e.text); };
+
+// ---------- seats ----------
+function seatXY(k, n) {
+  const a = (-90 + 180 / n + k * (360 / n)) * Math.PI / 180; // 10 seats start at -72° as before; 6 sit in mirrored pairs
+  return { x: 960 + 700 * Math.cos(a), y: 540 + 382 * Math.sin(a) };
+}
+const face = (id) => faceSVG(id, COLOR[id] || '#888');
+// small face ringed in that person's seat colour (VreKi s1_r1: vote faces all looked the same in black)
+const miniFace = (id) => `<span class="mini" style="border:4px solid ${COLOR[id] || '#888'}">${face(id)}</span>`;
+// the spy is shown once revealed; a hidden place only after the spy's guess lands (the audience guesses along)
+// one line on the card: long names (รถทัวร์ข้ามจังหวัด) shrink instead of wrapping off the card
+function setPlace(text) {
+  const v = $('#placeName'); v.innerHTML = ''; const t = document.createElement('span'); t.textContent = text; v.appendChild(t);
+  let px = 54; v.style.fontSize = px + 'px';
+  while (t.offsetWidth > v.clientWidth - 24 && px > 26) v.style.fontSize = --px + 'px';
+}
+const showSpy = () => $('#stage').classList.add('showspy');
+const showPlace = () => {
+  if (HIDE_PLACE) { $('#stage').classList.remove('hideplace'); setPlace(PLACE[deal.place] || deal.placeName); $('#card .k').textContent = 'สถานที่'; $('#card .h').textContent = 'สายลับไม่รู้ว่าที่นี่คือที่ไหน'; }
+};
+function buildSeats() {
+  const box = $('#seats'); box.innerHTML = '';
+  deal.players.forEach((p, k) => {
+    const { x, y } = seatXY(k, deal.players.length);
+    const el = document.createElement('div');
+    el.className = 'seat' + (deal.spies.includes(p.id) ? ' isspy' : '');
+    el.style.left = x + 'px'; el.style.top = y + 'px'; el.style.setProperty('--c', COLOR[p.id] || '#888');
+    el.innerHTML = `<div class="disc">${avatarSVG(p.id, COLOR[p.id] || '#888')}</div><div class="nm">${esc(p.name)}</div>` +
+      `<div class="brand"><img src="${LOGO[p.seat] || LOGO.claude}" alt=""></div><div class="spy">สายลับ</div><div class="sus"></div><div class="chip"></div>`;
+    box.appendChild(el);
+    P[p.id] = { ...p, el, x, y };
+  });
+}
+const nm = (id) => (P[id] ? P[id].name : id);
+const clearMarks = () => { for (const p of Object.values(P)) p.el.classList.remove('talk', 'target'); };
+function chip(id, html, red) { const c = P[id].el.querySelector('.chip'); c.innerHTML = html; c.classList.toggle('red', !!red); c.classList.add('on'); }
+const clearChips = () => document.querySelectorAll('.seat .chip').forEach((c) => c.classList.remove('on'));
+function setSus(id, name) {
+  const t = Object.values(P).find((p) => p.name === String(name || '').trim());
+  const s = P[id].el.querySelector('.sus');
+  if (!t || t.id === id) { s.classList.remove('on'); return; }
+  s.innerHTML = face(t.id); s.classList.add('on');
+}
+
+// ---------- bubble + ink line ----------
+function bubble(kind, id, to, text) {
+  const b = $('#bub');
+  b.className = kind; b.style.display = 'block';
+  b.querySelector('.who').innerHTML = `<span>${esc(nm(id))}</span>${to ? `<span>→</span><span class="to">${esc(nm(to))}</span>` : ''}`;
+  b.querySelector('.t').textContent = text || '…';
+  // sit between the speaker and the table centre, then keep inside the stage
+  const p = P[id], w = b.offsetWidth, h = b.offsetHeight;
+  const dx = 960 - p.x, dy = 540 - p.y, L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L;
+  const reach = 104 + Math.abs(ux) * w / 2 + Math.abs(uy) * h / 2; // seat radius + gap + half the bubble along the way in
+  let x = p.x + ux * reach - w / 2, y = p.y + uy * reach - h / 2;
+  x = Math.max(24, Math.min(1920 - w - 24, x)); y = Math.max(24, Math.min(1080 - h - 24, y));
+  // never on the place card: slide the bubble off it vertically, to the side of the card the speaker sits on
+  const c = $('#card'), cx = c.offsetLeft, cy = c.offsetTop, cw = c.offsetWidth, ch = c.offsetHeight;
+  if (x < cx + cw + 16 && x + w > cx - 16 && y < cy + ch + 20 && y + h > cy - 20) y = p.y > cy + ch / 2 ? cy + ch + 24 : cy - h - 24;
+  b.style.left = x + 'px'; b.style.top = y + 'px';
+  b.animate([{ transform: 'scale(.85)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 220, easing: 'cubic-bezier(.34,1.56,.64,1)' });
+}
+const hideBubble = () => { $('#bub').style.display = 'none'; };
+function inkLine(a, b) {
+  const A = P[a], B = P[b], svg = $('#lines');
+  const mx = (A.x + B.x) / 2 + (540 - (A.y + B.y) / 2) * 0.18, my = (A.y + B.y) / 2 + ((A.x + B.x) / 2 - 960) * 0.06;
+  const d = `M${A.x} ${A.y} Q${mx} ${my} ${B.x} ${B.y}`;
+  svg.innerHTML = `<path class="hal" d="${d}"/><path d="${d}" stroke-dasharray="2 16"/>`;
+  for (const el of svg.querySelectorAll('path')) {
+    const L = el.getTotalLength(); el.style.strokeDasharray = el.classList.contains('hal') ? `${L}` : '2 16';
+    if (el.classList.contains('hal')) el.animate([{ strokeDashoffset: L }, { strokeDashoffset: 0 }], { duration: 450, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' });
+  }
+}
+const clearLine = () => { $('#lines').innerHTML = ''; };
+function fuse(asked) { const r = Math.max(0, 1 - asked / QUESTIONS); $('#fuse .f').style.transform = `scaleX(${r})`; $('#fuse .tip').style.left = `calc(${(r * 100).toFixed(2)}% - 14px)`; }
+
+// ---------- panels ----------
+function think(id, text) {
+  const t = $('#think');
+  if (!text) { t.classList.remove('on'); return; }
+  t.querySelector('.k').innerHTML = `<span class="mini">${face(id)}</span><span>${esc(nm(id))}</span>`;
+  t.querySelector('.t').textContent = text; t.classList.add('on');
+}
+function spyGuesses(raw) {
+  const rows = String(raw || '').split(/[,\n]/).map((s) => { const m = s.match(/^\s*(.+?)\s*[:：]\s*(\d+)/); return m ? { name: Object.values(PLACE).includes(m[1].trim()) ? m[1].trim() : m[1].replace(/^ที่/, '').trim(), pct: Math.min(100, +m[2]) } : null; }).filter(Boolean).slice(0, 3);
+  if (!rows.length) return;
+  const real = PLACE[deal.place];
+  $('#spyp .rows').innerHTML = rows.map((r) => `<div class="row${r.name === real ? ' right' : ''}">${esc(r.name)}<div class="bar"><i style="width:${r.pct}%"></i></div></div>`).join('');
+  $('#spyp').classList.add('on');
+}
+
+// ---------- big card ----------
+async function bigCard(backHtml, red, sfx) {
+  const big = $('#big');
+  big.classList.remove('flip'); big.style.display = 'block';
+  const bk = big.querySelector('.bk'); bk.classList.toggle('red', !!red); bk.innerHTML = backHtml;
+  big.animate([{ transform: 'scale(.6)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 300, easing: 'cubic-bezier(.34,1.56,.64,1)' });
+  await wait(900);
+  big.classList.add('flip'); AUD.play(sfx);
+  await wait(2600);
+}
+const hideBig = () => { $('#big').style.display = 'none'; };
+function banner(text, red) { const b = $('#banner'); b.textContent = text; b.classList.toggle('red', !!red); b.style.display = 'block'; b.animate([{ opacity: 0, transform: 'translateX(-50%) rotate(-2deg) scale(.8)' }, { opacity: 1, transform: 'translateX(-50%) rotate(-2deg) scale(1)' }], { duration: 260, easing: 'cubic-bezier(.34,1.56,.64,1)' }); }
+const hideBanner = () => { $('#banner').style.display = 'none'; $('#tally').style.display = 'none'; };
+function tally(text) { const t = $('#tally'); t.textContent = text; t.style.display = 'block'; }
+
+// ---------- one event ----------
+let lastAccuse = null, finalCounts = {};
+async function handle(e, idx) {
+  if (e.type === 'answer') {
+    clearMarks(); P[e.id].el.classList.add('talk');
+    bubble('a', e.id, null, e.text); AUD.play('talk', { gain: 0.6 }); playVoice(0, idx);
+    await wait(holdMs(e, idx));
+  } else if (e.type === 'thought') {
+    if (e.suspect) setSus(e.id, e.suspect);
+    if (deal.spies.includes(e.id) && e.guesses) spyGuesses(e.guesses);
+    think(e.id, e.text);
+  } else if (e.type === 'ask') {
+    clearMarks(); P[e.id].el.classList.add('talk'); P[e.to].el.classList.add('target');
+    inkLine(e.id, e.to); bubble('q', e.id, e.to, e.text); AUD.play('talk'); playVoice(0, idx); fuse(e.n);
+    await wait(holdMs(e, idx));
+  } else if (e.type === 'checkpoint') {
+    hideBubble(); clearLine(); clearMarks();
+    banner('ช่วงตัดสินใจ'); AUD.play('meeting');
+    await wait(1100);
+    for (const [id, d] of Object.entries(e.decisions)) {
+      if ((d.act === 'point' || d.act === 'accuse') && P[d.target]) { chip(id, `ชี้${miniFace(d.target)}`); setSus(id, nm(d.target)); }
+      else if (d.act === 'guess') chip(id, 'จะเดา!', true);
+      else chip(id, 'ยังก่อน');
+      await wait(160);
+    }
+    await wait(2200); clearChips(); hideBanner();
+  } else if (e.type === 'accuse') {
+    hideBubble(); clearLine(); clearMarks(); lastAccuse = e;
+    $('#dim').classList.add('on'); P[e.id].el.style.zIndex = 7; P[e.target].el.style.zIndex = 7;
+    // option A (2026-11-02): a trial comes from several people pointing — say how many
+    banner(e.pointers && e.pointers.length > 1 ? `${e.pointers.length} คนชี้ ${nm(e.target)}!` : `${nm(e.id)} กล่าวหา ${nm(e.target)}!`, true); AUD.play('emergency');
+    P[e.target].el.classList.add('target'); inkLine(e.id, e.target);
+    await wait(1200);
+    bubble('acc', e.id, e.target, e.text); playVoice(0, idx);
+    await wait(holdMs(e, idx));
+  } else if (e.type === 'defend') {
+    clearMarks(); P[e.id].el.classList.add('talk'); bubble('def', e.id, null, e.text); playVoice(0, idx);
+    await wait(holdMs(e, idx));
+    hideBubble(); clearLine(); tally('เห็นด้วย 0');
+    lastAccuse.yes = 0;
+  } else if (e.type === 'vote') {
+    P[e.id].el.style.zIndex = 7;
+    // games recorded before 2026-11-03 stored the running yes-count here: a vote is yes when the count rose
+    const y = typeof e.yes === 'number' ? e.yes > lastAccuse.yes : !!e.yes;
+    chip(e.id, y ? 'เห็นด้วย' : 'ไม่', y); AUD.play('vote', { gain: 0.7 });
+    if (y) lastAccuse.yes++;
+    tally(`เห็นด้วย ${lastAccuse.yes}`);
+    await wait(420);
+  } else if (e.type === 'voteResult') {
+    tally(`เห็นด้วย ${e.yes} · ต้องการ ${e.need}`);
+    banner(e.pass ? 'โหวตผ่าน! เปิดการ์ด' : 'โหวตไม่ผ่าน เล่นต่อ', e.pass);
+    await wait(2400);
+    clearChips(); hideBanner();
+    if (!e.pass) { $('#dim').classList.remove('on'); for (const p of Object.values(P)) p.el.style.zIndex = ''; clearMarks(); }
+  } else if (e.type === 'final') {
+    if (!finalCounts.__on) { finalCounts = { __on: true }; hideBubble(); clearLine(); clearMarks(); banner('โหวตรอบสุดท้าย: ใครคือสายลับ?'); AUD.play('meeting'); await wait(1400); }
+    if (e.target) { chip(e.id, `โหวต${miniFace(e.target)}`); finalCounts[e.target] = (finalCounts[e.target] || 0) + 1; }
+    else chip(e.id, 'งดออกเสียง');
+    AUD.play('vote', { gain: 0.6 });
+    await wait(380);
+  } else if (e.type === 'finalResult') {
+    await wait(1200);
+    banner(e.top ? `${nm(e.top)} โดนโหวตมากที่สุด` : 'คะแนนเท่ากัน ไม่มีใครโดน', !!e.top);
+    await wait(2400); clearChips(); hideBanner();
+  } else if (e.type === 'reveal') {
+    $('#dim').classList.add('on');
+    await bigCard(`<div class="face">${face(e.id)}</div><div class="l1">${e.isSpy ? 'สายลับ!' : 'ไม่ใช่สายลับ'}</div><div class="l2">${esc(nm(e.id))}</div>`, e.isSpy, e.isSpy ? 'eject' : (e.via === 'accuse' ? 'vote' : 'win_imp')); // a trial's wrong catch: play goes on, no spy-win sting
+    hideBig();
+    if (e.isSpy) showSpy();
+    // a trial's wrong catch clears that person and play goes on (2026-11-02)
+    else if (e.via === 'accuse') { $('#dim').classList.remove('on'); for (const p of Object.values(P)) p.el.style.zIndex = ''; clearMarks(); P[e.id].el.classList.add('cleared'); }
+  } else if (e.type === 'guess') {
+    showSpy();
+    hideBubble(); clearLine(); clearMarks();
+    $('#dim').classList.add('on'); P[e.id].el.style.zIndex = 7; P[e.id].el.classList.add('talk');
+    banner(e.last ? `${nm(e.id)} ขอเดาครั้งสุดท้าย!` : `${nm(e.id)} เปิดตัว: ฉันคือสายลับ!`, true); AUD.play('shadow');
+    await wait(1300);
+    bubble('gs', e.id, null, e.text); playVoice(0, idx);
+    await wait(holdMs(e, idx));
+    hideBubble(); hideBanner();
+    await bigCard(`<div class="l1">${esc(PLACE[e.place] || 'เดาไม่ออก')}</div><div class="l2">${e.right ? 'เดาถูก!' : `ผิด! ที่นี่คือ${esc(PLACE[deal.place])}`}</div>`, e.right, e.right ? 'win_imp' : 'win_crew');
+    hideBig(); showPlace();
+  } else if (e.type === 'over') {
+    showSpy(); showPlace();
+    await showEnd(e);
+  } else if (e.type === 'halt') {
+    // runner.js: a company out of quota / an error / the stop button — the game ends here, no outcome
+    showHalt(e.provider ? `${CAMP[e.provider] || e.provider} ใช้งานไม่ได้` : 'เกมหยุดแล้ว', e.message === 'หยุดเกมแล้ว' ? '' : e.message);
+    S.phase = 'over';
+  }
+}
+
+function showHalt(title, msg) {
+  hideBubble(); clearLine(); hideBanner(); hud(null); syncStop(true);
+  $('#haltT').textContent = title;
+  $('#haltM').textContent = msg || '';
+  $('#halt').style.display = 'flex';
+}
+function hud(text) { const h = $('#wait'); if (text) h.textContent = text; h.classList.toggle('on', !!text); }
+
+async function showEnd(e) {
+  hideBubble(); clearLine(); hideBanner(); $('#dim').classList.remove('on');
+  const spyWin = e.winner === 'spy';
+  const camp = {};
+  for (const p of deal.players) { const c = camp[p.seat] || (camp[p.seat] = { pts: 0, seats: 0 }); c.pts += e.points[p.id] || 0; c.seats++; }
+  const box = $('#end .box');
+  box.innerHTML = `<div class="w${spyWin ? ' red' : ''}">${spyWin ? 'สายลับชนะ!' : 'จับสายลับได้!'}</div><div class="how">${HOW[e.how] || ''} · ที่นี่คือ ${esc(PLACE[e.place])}</div>` +
+    `<div class="camps">${Object.entries(camp).map(([k, c]) => `<div class="camp"><img src="${LOGO[k]}" alt=""><div><div class="l">${CAMP[k] || k}</div><div class="s">${c.seats} ที่นั่ง</div></div><div class="n">${c.pts}</div></div>`).join('')}</div>` +
+    `<div class="ppl">${deal.players.map((p) => `<div class="p${deal.spies.includes(p.id) ? ' spy' : ''}"><span class="mini">${face(p.id)}</span>${esc(p.name)} +${e.points[p.id] || 0}</div>`).join('')}</div>` +
+    '<div class="act"><a href="/">กลับหน้าแรก</a></div>';
+  syncStop(true);
+  $('#end').classList.add('on');
+  $('#end .box').animate([{ transform: 'scale(.8)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 380, easing: 'cubic-bezier(.34,1.56,.64,1)' });
+  AUD.play(spyWin ? 'win_imp' : 'win_crew');
+  await wait(4000);
+  S.phase = 'over';
+}
+
+// ---------- load + play ----------
+async function fetchTL() { const r = await fetch(tlUrl, { cache: 'no-store' }); if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }
+async function start() {
+  if (!tlUrl) { showHalt('ไม่มีเกมให้เปิด', 'เปิดเกมจากหน้าแรก'); return; }
+  // the runner rewrites the file while a game is played: a read that lands mid-write is retried
+  for (let k = 0; !TL; k++) {
+    try { TL = await fetchTL(); } catch (err) { if (k >= 4) { showHalt('เปิดเกมนี้ไม่ได้', 'ไฟล์เกมหายหรือเสีย · ลองกลับหน้าแรกแล้วเปิดใหม่'); return; } await new Promise((res) => setTimeout(res, 800)); }
+  }
+  deal = TL.find((x) => x.type === 'deal');
+  if (!deal) { showHalt('เปิดเกมนี้ไม่ได้', 'ไฟล์นี้ไม่ใช่เกมสายลับ'); return; }
+  syncStop(false);
+  for (const pl of deal.places || []) PLACE[pl.id] = pl.name; // games from before 2026-11-02 evening fall back to the built-in names
+  QUESTIONS = (deal.opts && deal.opts.questions) || 18;
+  setPlace(PLACE[deal.place] || deal.placeName);
+  document.fonts.ready.then(() => { const v = $('#placeName'); setPlace(v.textContent); }); // re-fit once Kanit is in
+  $('#stage').classList.toggle('few', deal.players.length <= 8);
+  buildSeats(); fuse(0);
+  // VreKi review s1_r1: the audience must not know the spy before the reveal → spy tag, spy panel and thought cards
+  // (the spy's own thoughts give it away) are off unless ?spy=1 / ?thought=1 · ?place=0 hides the place card (game 2)
+  if (qs.get('spy') === '1') stage.classList.add('showspy');
+  if (qs.get('thought') === '1') stage.classList.add('showthink');
+  if (HIDE_PLACE) { $('#stage').classList.add('hideplace'); setPlace('???'); $('#card .k').textContent = 'สถานที่ลับ'; $('#card .h').textContent = 'ลองเดาไปพร้อมกับสายลับ'; }
+  if (qs.get('sus') === '0') stage.classList.remove('showsus');
+  await loadVoice();
+  await document.fonts.ready;
+  S.phase = 'play';
+  requestAnimationFrame(function tick() { requestAnimationFrame(tick); });
+  await wait(1500);
+  for (;;) {
+    for (let k = 0; S.i >= TL.length; k++) {
+      if (!LIVE || S.phase === 'over') { if (!LIVE && S.phase !== 'over') showHalt('เกมนี้จบไม่ครบ', 'เกมถูกปิดไปก่อนเล่นจบ'); return; }
+      if (k === 1) hud('รอ AI คิดอยู่…'); // the next step is still being played by the AIs
+      await wait(1500);
+      try { const t = await fetchTL(); if (t.length > TL.length) TL = t; } catch (_) {}
+    }
+    hud(null);
+    const e = TL[S.i];
+    await voiceReady(e, S.i);
+    await handle(e, S.i);
+    S.i++;
+    if (S.phase === 'over') return;
+  }
+}
+
+// ---------- stop button (live only): centred question card → POST /api/abort → the halt card ----------
+let ENDED = false;
+function syncStop(ended) { if (ended) ENDED = true; $('#stopBtn').style.display = LIVE && !ENDED ? 'block' : 'none'; }
+$('#stopBtn').addEventListener('click', () => { $('#askStop').style.display = 'flex'; });
+$('#askStop').addEventListener('click', async (ev) => {
+  const b = ev.target.closest('[data-stop]'); if (!b) return;
+  $('#askStop').style.display = 'none';
+  if (b.dataset.stop !== 'yes') return;
+  const r = await fetch('/api/abort', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => null);
+  if (r && r.ok) { S.phase = 'over'; showHalt('เกมหยุดแล้ว', 'AI ที่กำลังคิดอยู่จะตอบให้จบก่อน แล้วเกมจะไม่เรียก AI อีก'); }
+  else showHalt('หยุดเกมไม่ได้', 'ลองกลับหน้าแรกแล้วกด "หยุดเกม" อีกครั้ง');
+});
+
+// the 1920×1080 stage, scaled to fit the window and centred
+function fit() {
+  const s = Math.min(innerWidth / 1920, innerHeight / 1080);
+  stage.style.transform = `translate(${(innerWidth - 1920 * s) / 2}px, ${(innerHeight - 1080 * s) / 2}px) scale(${s})`;
+}
+addEventListener('resize', fit); fit();
+
+let AUD_ON = false;
+const unlock = () => { AUD.unlock && AUD.unlock(); AUD_ON = true; $('#snd').style.display = 'none'; };
+$('#snd').addEventListener('click', unlock);
+document.addEventListener('keydown', (ev) => {
+  if ($('#halt').style.display === 'flex' || $('#askStop').style.display === 'flex') { if (ev.key === ' ') ev.preventDefault(); return; }
+  if (ev.key === ' ') { S.paused = !S.paused; ev.preventDefault(); }
+  if (ev.key === 's' || ev.key === 'S') stage.classList.toggle('showspy');
+  if (ev.key === 't' || ev.key === 'T') stage.classList.toggle('showthink');
+  if (ev.key === 'u' || ev.key === 'U') stage.classList.toggle('showsus');
+});
+start().catch((err) => { console.error(err); showHalt('เกิดข้อผิดพลาด', String(err && err.message || err).slice(0, 160)); });
+</script>
+</body>
+</html>

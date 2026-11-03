@@ -1,0 +1,66 @@
+/* setup.css — the "ตั้งค่า AI และเสียง" card and the centred question card.
+   Same ink-on-paper look as lobby.css: square corners, double ink border, one spot red. */
+
+/* ---------- modal: centred card on a dimmed page ---------- */
+.modal { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(0, 0, 0, .72); }
+.modal-card {
+  background: var(--paper); color: var(--ink); border: .35vh solid var(--ink); outline: .35vh solid var(--paper);
+  padding: 2.2vh 2.4vh; max-width: min(560px, 92vw); font: 600 1.9vh/1.5 'Mali', sans-serif; text-align: left;
+}
+.modal-card p { margin: 0 0 1.6vh; }
+.modal-card h2 { margin: 0 0 1.4vh; font: italic 900 3.6vh/1.1 'Kanit', sans-serif; transform: rotate(-1deg); }
+.setup-actions { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 1vh 1.2vw; margin-top: 1.4vh; }
+.modal-card .btn { font-size: 1.8vh; padding: .7vh 1.4vw; border-color: var(--ink); outline: none; background: #fff; color: var(--ink); }
+.modal-card .btn.primary { background: var(--ink); color: #fff; }
+.modal-card .link { color: var(--ink); }
+.ask-card { min-width: min(440px, 92vw); }
+.ask-card h2 { color: var(--red); }
+
+/* ---------- setup card ---------- */
+.setup-card { width: min(1040px, 94vw); max-width: none; max-height: 92vh; overflow: auto; }
+.setup-card h2 { margin-bottom: .6vh; }
+.setup-note, .quota-note, .seat-line, .voice-note { font: 500 1.6vh/1.45 'Mali', sans-serif; margin: 0 0 1.2vh; }
+.quota-note, .voice-note { color: #5B5750; }
+.seat-line { font: 700 1.9vh 'Mali', sans-serif; }
+
+.prov-rows { display: grid; gap: 1vh; margin: 1.2vh 0; }
+.prov-row {
+  display: grid; grid-template-columns: minmax(0, 1.3fr) 12vh minmax(0, 1.3fr) 16vh 12vh; gap: .6vh 1.2vw; align-items: center;
+  border: .3vh solid var(--ink); padding: 1vh 1.2vh; background: #fff;
+}
+.prov-row.off { background: #E6E2D9; }
+.prov-row.off .brand img { filter: grayscale(1); opacity: .6; }
+.prov-pick { gap: .8vw; }
+.prov-pick input { accent-color: var(--ink); width: 1.9vh; height: 1.9vh; }
+.prov-row .brand { flex: none; width: 4.4vh; height: 4.4vh; border-radius: 50%; background: #fff; border: .3vh solid var(--ink); display: flex; align-items: center; justify-content: center; }
+.prov-row .brand img { width: 68%; height: 68%; object-fit: contain; display: block; }
+.prov-name { display: flex; flex-direction: column; line-height: 1.2; }
+.prov-name b { font: 800 2.2vh 'Kanit', sans-serif; }
+.prov-name small { font: 500 1.45vh 'Mali', sans-serif; color: #5B5750; }
+.prov-row .chip { justify-self: start; }
+.prov-row [data-test] { justify-self: end; }
+.chip { font: 700 1.45vh 'Mali', sans-serif; border: .22vh solid var(--ink); padding: 0 .8vh .2vh; white-space: nowrap; }
+.chip.good { background: var(--ink); color: #fff; }
+.chip.bad { background: var(--red); color: #fff; border-color: var(--red); }
+.model { display: flex; align-items: center; gap: .6vw; font: 600 1.5vh 'Mali', sans-serif; white-space: nowrap; }
+.model input, .model select, .key-row input {
+  flex: 1; min-width: 0; font: 500 1.6vh 'Mali', monospace; color: var(--ink); background: var(--paper);
+  border: .22vh solid var(--ink); border-radius: 0; padding: .4vh .8vh;
+}
+.model select { flex: none; cursor: pointer; }
+.model select[data-model-pick] { flex: 1; }
+.custom-model { grid-column: 3 / -1; }
+.prov-msg { grid-column: 1 / -1; margin: 0; font: 500 1.55vh/1.4 'Mali', sans-serif; color: #33302B; }
+.prov-msg:empty { display: none; }
+.prov-msg.bad { color: var(--red); font-weight: 700; }
+.key-row { grid-column: 1 / -1; display: flex; gap: 1vw; align-items: center; }
+
+.voice-row { display: flex; flex-wrap: wrap; gap: 1.6vw; align-items: center; margin: 1.4vh 0 .6vh; font: 600 1.8vh 'Mali', sans-serif; }
+.voice-row b { font: 800 2vh 'Kanit', sans-serif; }
+.voice-row input { accent-color: var(--ink); }
+.voice-row label:has(input:disabled) { opacity: .45; cursor: default; }
+
+@media (max-width: 860px) {
+  .prov-row { grid-template-columns: 1fr auto; }
+  .model { grid-column: 1 / -1; }
+}

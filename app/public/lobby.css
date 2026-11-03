@@ -1,0 +1,110 @@
+/* lobby.css — the first page. Same ink-comic language as the game (the clip's prototype):
+   black page, paper cards, ink lines, one spot red, screentone dots. No glow, no gradients of colour. */
+:root { --page:#0A0A0A; --paper:#F3F0E9; --ink:#111111; --red:#D7262E; --grey:#A9A59D; color-scheme: dark; }
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body { background: var(--page); color: #fff; font-family: 'Mali', 'Leelawadee UI', sans-serif; }
+button, input, select { font-family: inherit; }
+[hidden] { display: none !important; }
+
+/* ---------- buttons ---------- */
+.btn {
+  background: var(--ink); color: #fff; border: .3vh solid #fff; outline: .3vh solid var(--ink); border-radius: 0;
+  padding: 1.1vh 1.6vw; font: 700 2vh/1.3 'Mali', sans-serif; cursor: pointer; transition: transform .15s;
+}
+.btn:hover { transform: rotate(-1deg); }
+.btn.primary { background: var(--paper); color: var(--ink); border-color: var(--ink); outline-color: var(--paper); }
+.btn:disabled { opacity: .45; cursor: default; transform: none; }
+.link { background: none; border: none; color: #CFCAC0; text-decoration: underline; cursor: pointer; font: 500 1.8vh 'Mali', sans-serif; padding: .4vh .4vw; }
+.link:hover { color: #fff; }
+.check { display: inline-flex; gap: .5vw; align-items: center; cursor: pointer; }
+
+/* ---------- lobby ---------- */
+#lobby { min-height: 100vh; display: grid; place-items: center; padding: 3vh 0 4vh; }
+.lobby-inner { width: min(1300px, 92vw); text-align: center; }
+#lobby h1 { font: italic 900 10vh/1.05 'Kanit', sans-serif; margin: 0; color: #fff; transform: rotate(-2deg); }
+#lobby h1 span { color: var(--red); margin-left: .1em; }
+.sub {
+  display: inline-block; margin: 1.6vh 0 3vh; background: var(--paper); color: var(--ink);
+  border: .35vh solid var(--ink); outline: .35vh solid var(--paper); padding: .5vh 1.6vh .7vh;
+  font: 600 2vh 'Mali', sans-serif; transform: rotate(1deg);
+}
+
+/* the six players: round paper discs ringed in their colour, like the map tokens */
+.cast { display: flex; justify-content: center; gap: 2.2vw; margin-bottom: 3.4vh; }
+.cast-item { position: relative; display: flex; flex-direction: column; align-items: center; }
+.cast-item .disc {
+  width: 12vh; height: 12vh; border-radius: 50%; background: var(--paper); overflow: hidden;
+  border: .8vh solid var(--c); outline: .5vh solid var(--ink); position: relative;
+}
+.cast-item .disc::before { /* screentone, fading down */
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image: radial-gradient(circle, var(--ink) 1.1px, transparent 1.5px); background-size: 8px 8px;
+  -webkit-mask-image: linear-gradient(to bottom, #000, transparent 70%); mask-image: linear-gradient(to bottom, #000, transparent 70%); opacity: .55;
+}
+.cast-item .disc svg { position: relative; width: 100%; height: 100%; display: block; }
+.cast-item:nth-child(odd) { transform: translateY(-.8vh) rotate(-2deg); }
+.cast-item:nth-child(even) { transform: rotate(2deg); }
+.cast-item .nm { margin-top: 1.1vh; background: #fff; color: var(--ink); border: .3vh solid var(--ink); padding: .1vh .9vh .3vh; font: 800 2vh/1.15 'Kanit', sans-serif; white-space: nowrap; }
+.avatar .o { stroke: var(--ink); stroke-width: 4.2; stroke-linejoin: round; }
+
+/* rule choice: two options, each with a visible tick box. Unpicked = no fill, dashed grey edge (not a .btn);
+   picked = paper card, ink border, red ring, ticked box and a "เลือกอยู่" tag. Hover/focus never fill or tilt a card. */
+.rules { display: flex; justify-content: center; gap: 1.6vw; margin-bottom: 2.4vh; }
+.rule { position: relative; cursor: pointer; display: flex; }
+.rule input { position: absolute; opacity: 0; pointer-events: none; }
+.rule > span {
+  position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .3vh;
+  min-width: 26vw; max-width: 40vw; background: transparent; color: #8E8A82; border: .35vh dashed #77736C;
+  padding: 1.2vh 2vw 1.4vh 5.2vh;
+}
+.rule .box {
+  position: absolute; left: 1.4vh; top: 50%; width: 2.6vh; height: 2.6vh; margin-top: -1.3vh;
+  border: .35vh solid currentColor; background: transparent;
+}
+.rule .picked { display: none; position: absolute; right: -1vh; top: -1.6vh; background: var(--red); color: #fff; border: .3vh solid var(--ink);
+  font: 800 1.5vh/1 'Kanit', sans-serif; font-style: normal; padding: .3vh .8vh .5vh; transform: rotate(3deg); }
+.rule b { font: 800 2.5vh/1.2 'Kanit', sans-serif; }
+.rule small { font: 600 1.6vh/1.3 'Mali', sans-serif; opacity: .85; }
+.rule:hover input:not(:checked) + span { color: #CFCAC0; border-color: #CFCAC0; } /* still dashed and empty: "you can pick this" */
+.rule input:checked + span { background: var(--paper); color: var(--ink); border: .35vh solid var(--ink); outline: .45vh solid var(--red); transform: rotate(-1deg); }
+.rule input:checked + span .box { background: var(--ink); }
+.rule input:checked + span .box::after { /* white tick */
+  content: ''; position: absolute; left: 28%; top: 8%; width: 30%; height: 58%;
+  border: solid #fff; border-width: 0 .4vh .4vh 0; transform: rotate(45deg);
+}
+.rule input:checked + span .picked { display: block; }
+/* keyboard focus: a separate white dotted ring outside the card; the red ring of the picked card stays red */
+.rule input:focus-visible + span::before { content: ''; position: absolute; inset: -1.4vh; border: .3vh dotted #fff; pointer-events: none; }
+
+/* strip under the rules: seats + voice + the setup link */
+.setup-strip { display: flex; justify-content: center; align-items: baseline; flex-wrap: wrap; gap: .6vh 1.6vw; margin: 0 0 1.8vh; color: #CFCAC0; font: 600 1.8vh 'Mali', sans-serif; }
+.setup-strip .warn { color: #fff; background: var(--red); padding: .1vh .8vh .3vh; }
+
+.running { display: flex; gap: 1vw; justify-content: center; align-items: center; margin: 0 0 2vh; color: #fff; font: 700 1.9vh 'Mali', sans-serif; }
+.running > span { background: var(--red); padding: .3vh 1vh .5vh; }
+
+.quota { margin: 0 auto 1.6vh; max-width: 900px; color: #8E8A82; font: 500 1.55vh/1.5 'Mali', sans-serif; }
+.actions { display: flex; justify-content: center; gap: 1.4vw; flex-wrap: wrap; }
+.actions .btn { min-width: 22vw; padding: 1.6vh 2vw; font-size: 2.5vh; }
+.start-error { margin: 1.8vh auto 0; max-width: 70vw; color: #fff; background: var(--red); padding: .6vh 1.4vh .8vh; font: 600 1.8vh 'Mali', sans-serif; display: inline-block; }
+
+.lobby-foot { margin-top: 3vh; display: flex; justify-content: center; gap: 2.4vw; align-items: center; }
+.history { margin: 1.5vh auto 0; max-height: 26vh; overflow: auto; width: min(720px, 86vw); text-align: left; border-top: .3vh solid #fff; }
+.history button {
+  display: flex; justify-content: space-between; gap: 2vw; width: 100%; background: none; border: none; border-bottom: 1px solid #333;
+  color: #fff; padding: .9vh .4vw; cursor: pointer; font: 500 1.75vh 'Mali', sans-serif; text-align: left;
+}
+.history button:hover { background: #1C1C1C; }
+.history button.clip { font-weight: 700; }
+.history .tag { color: #8E8A82; white-space: nowrap; }
+.history button.clip .tag { color: #fff; background: var(--red); padding: 0 .8vh .2vh; }
+.history .tag.live { color: var(--ink); background: var(--paper); padding: 0 .8vh .2vh; }
+.hint { color: #CFCAC0; font: 600 1.8vh 'Mali', sans-serif; }
+
+@media (max-width: 760px) {
+  .cast { flex-wrap: wrap; gap: 3vw; }
+  .rules { flex-direction: column; align-items: center; }
+  .rule > span { min-width: 80vw; max-width: none; }
+  .actions .btn { min-width: 80vw; }
+}

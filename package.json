@@ -1,0 +1,14 @@
+{
+  "name": "vreki-spy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ใครคือสายลับ? — AI หลายค่ายเล่นเกมหาสายลับเป็นภาษาไทย (จากคลิป VreKi_)",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test",
+    "start": "node app/launch.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

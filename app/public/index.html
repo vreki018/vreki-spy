@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ใครคือสายลับ?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,600;0,800;1,800;1,900&family=Mali:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="lobby.css">
+<link rel="stylesheet" href="setup.css">
+</head>
+<body>
+
+<!-- ===== Lobby ===== -->
+<main id="lobby">
+  <div class="lobby-inner">
+    <h1>ใครคือสายลับ<span>?</span></h1>
+    <p class="sub">AI 3 ค่ายเล่นเกมหาสายลับที่ไม่รู้ว่าตัวเองอยู่ที่ไหน · จากคลิป VreKi_</p>
+    <div id="cast" class="cast"></div>
+
+    <div class="rules" role="radiogroup" aria-label="การ์ดสถานที่">
+      <!-- show checked on first paint (the default); lobby.js switches to the saved choice when /api/setup answers -->
+      <label class="rule"><input type="radio" name="place" value="show" checked><span><i class="box" aria-hidden="true"></i><em class="picked" aria-hidden="true">เลือกอยู่</em><b>เห็นสถานที่</b> <small>(รู้ก่อนตัวละคร ลุ้นว่าสายลับจะเนียนไหม)</small></span></label>
+      <label class="rule"><input type="radio" name="place" value="hide"><span><i class="box" aria-hidden="true"></i><em class="picked" aria-hidden="true">เลือกอยู่</em><b>ซ่อนสถานที่</b> <small>(เดาไปพร้อมกับสายลับ)</small></span></label>
+    </div>
+
+    <div id="setupStrip" class="setup-strip">
+      <span id="stripRules">สถานที่: เห็นตั้งแต่ต้น</span>
+      <span id="stripSeats">กำลังเช็คค่าย AI…</span>
+      <span id="stripVoice"></span>
+      <button class="link" data-act="open-setup">ตั้งค่า AI และเสียง</button>
+    </div>
+
+    <div id="runningBox" class="running" hidden>
+      <span>มีเกมเล่นอยู่</span>
+      <button class="btn" data-act="watch-running">ดูเกมที่เล่นอยู่</button>
+      <button class="btn" data-act="stop-running">หยุดเกม</button>
+    </div>
+
+    <p class="quota">เกมหนึ่งเรียก AI รวมราว 15–50 ครั้ง (จบเร็วก็ใช้น้อย) · ช่วงตัดสินใจเรียกพร้อมกันทั้ง 6 ที่ · ผสมหลายค่าย หรือเปลี่ยนเป็นรุ่นเล็กในการ์ดตั้งค่า จะเล่นได้หลายเกมขึ้น</p>
+    <div class="actions">
+      <button class="btn primary" data-act="start">เริ่มเกม</button>
+      <button class="btn" data-act="start-mock">โหมดทดสอบ (ไม่เรียก AI)</button>
+    </div>
+    <p id="startError" class="start-error" hidden></p>
+
+    <div class="lobby-foot">
+      <button class="link" data-act="history">เกมย้อนหลัง</button>
+      <button class="link" data-act="shutdown">ปิดเกม</button>
+    </div>
+    <div id="historyBox" class="history" hidden></div>
+  </div>
+</main>
+
+<!-- ===== Setup (centred card on a dimmed page) ===== -->
+<div id="setup" class="modal" hidden>
+  <div class="modal-card setup-card" role="dialog" aria-labelledby="setupTitle">
+    <h2 id="setupTitle">ตั้งค่า AI และเสียง</h2>
+    <p class="setup-note">เลือกค่าย AI ที่จะให้เล่น · เลือกค่ายเดียว สองค่าย หรือครบสามค่ายก็ได้ · ที่นั่ง 6 ที่แบ่งให้เท่าๆ กัน</p>
+    <div id="provRows" class="prov-rows"></div>
+    <p id="seatLine" class="seat-line"></p>
+    <p class="quota-note">กด "ทดสอบ" = เรียก AI จริง 1 ครั้ง (ใช้โควต้าแพ็กของคุณ) · รุ่นเล็กหรือระดับคิดต่ำ ใช้โควต้าน้อยกว่า</p>
+    <div class="voice-row">
+      <b>เสียงพากย์</b>
+      <label class="check"><input type="radio" name="voice" value="off"> ปิดเสียง</label>
+      <label class="check"><input type="radio" name="voice" value="free"> เสียงฟรี</label>
+      <label class="check"><input type="radio" name="voice" value="gemini"> เสียง Gemini</label>
+    </div>
+    <p id="voiceNote" class="voice-note"></p>
+    <div class="setup-actions">
+      <button class="link" data-act="recheck">เช็คโปรแกรมใหม่</button>
+      <button class="btn primary" data-act="close-setup">เสร็จแล้ว</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Question card (SETUP.ask) ===== -->
+<div id="askBox" class="modal" hidden>
+  <div class="modal-card ask-card" role="alertdialog" aria-labelledby="askTitle">
+    <h2 id="askTitle"></h2>
+    <p id="askText"></p>
+    <div id="askButtons" class="setup-actions"></div>
+  </div>
+</div>
+
+<div id="closedNote" class="modal" hidden><div class="modal-card"><p>ปิดเกมแล้ว · ปิดแท็บนี้ได้เลย</p></div></div>
+
+<script src="avatars.js"></script>
+<script src="setup.js"></script>
+<script src="lobby.js"></script>
+</body>
+</html>
