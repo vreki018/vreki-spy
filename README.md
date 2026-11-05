@@ -1,6 +1,6 @@
 # ใครคือสายลับ? — ให้ AI 3 ค่ายเล่นเกมหาสายลับเป็นภาษาไทย
 
-เกมจาก **[คลิปของช่อง VreKi_]({{CLIP_URL}})** · ช่อง [VreKi_](https://www.youtube.com/@VreKi_018)
+เกมจาก **[คลิปของช่อง VreKi_](https://www.youtube.com/@VreKi_018/videos)** · ช่อง [VreKi_](https://www.youtube.com/@VreKi_018)
 
 💬 Discord ของช่อง: https://discord.gg/nZcYBwB5fc
 
