@@ -196,7 +196,7 @@
   <a id="home" class="corner" href="/">หน้าแรก</a>
   <button id="stopBtn" class="corner" type="button">หยุดเกม</button>
   <div id="wait" class="hud">รอ AI คิดอยู่…</div>
-  <div id="snd">คลิกเพื่อเปิดเสียง</div>
+  <div id="snd">คลิกเพื่อเริ่ม + เปิดเสียง</div>
   <div id="askStop" role="alertdialog" aria-labelledby="askStopT"><div class="card"><h2 id="askStopT">หยุดเกมนี้เลยไหม?</h2>
     <button type="button" data-stop="yes">หยุดเกม</button><button type="button" class="quiet" data-stop="no">ดูต่อ</button></div></div>
   <div id="halt"><div class="card"><h2 id="haltT">เกมหยุดแล้ว</h2><p id="haltM"></p><a href="/">กลับหน้าแรก</a></div></div>
@@ -521,6 +521,7 @@ async function start() {
   await document.fonts.ready;
   S.phase = 'play';
   requestAnimationFrame(function tick() { requestAnimationFrame(tick); });
+  await GATE;
   await wait(1500);
   for (;;) {
     for (let k = 0; S.i >= TL.length; k++) {
@@ -559,7 +560,9 @@ function fit() {
 addEventListener('resize', fit); fit();
 
 let AUD_ON = false;
-const unlock = () => { AUD.unlock && AUD.unlock(); AUD_ON = true; $('#snd').style.display = 'none'; };
+// a browser lets a page make sound only after a click: the game waits for it, or its first lines are lost
+let openGate; const GATE = new Promise((res) => (openGate = res));
+const unlock = () => { AUD.unlock && AUD.unlock(); AUD_ON = true; $('#snd').style.display = 'none'; S.paused = false; openGate(); };
 $('#snd').addEventListener('click', unlock);
 document.addEventListener('keydown', (ev) => {
   if ($('#halt').style.display === 'flex' || $('#askStop').style.display === 'flex') { if (ev.key === ' ') ev.preventDefault(); return; }
